@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.widget.ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" 
+        tools:context=".MainActivity" 
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/timeTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="25:00"
+            android:textSize="60sp"
+            android:textColor="#FFFFFF"
+            android:gravity="center"
+            android:layout_marginTop="40dp"
+            android:layout_marginBottom="30dp"
+            android:background="@android:color/darker_gray"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"/>
+
+        <Button
+            android:id="@+id/startStopButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Start"
+            android:textSize="18sp"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#007BFF"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/timeTextView"
+            android:layout_marginTop="20dp"/>
+
+        <Button
+            android:id="@+id/chooseSoundButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Choose Alarm Sound"
+            android:textColor="#007BFF"
+            android:backgroundTint="#FFFFFF"
+            android:layout_marginTop="10dp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/startStopButton"/>
+
+        <androidx.cardview.widget.CardView
+            android:id="@+id/timeInputCard"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:cardCornerRadius="16dp"
+            app:cardElevation="4dp"
+            android:layout_marginTop="30dp"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/chooseSoundButton">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="center"
+                android:padding="16dp">
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:boxBackgroundColor="@android:color/white"
+                    app:boxStrokeColor="#007BFF"
+                    app:hintTextColor="#007BFF"
+                    android:layout_marginBottom="16dp">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/workTimeInput"
+                        android:layout_width="80dp"
+                        android:layout_height="wrap_content"
+                        android:hint="Work"
+                        android:inputType="number"
+                        android:text="25"
+                        android:textAlignment="center"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:boxBackgroundColor="@android:color/white"
+                    app:boxStrokeColor="#007BFF"
+                    app:hintTextColor="#007BFF"
+                    android:layout_marginBottom="16dp">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/breakTimeInput"
+                        android:layout_width="80dp"
+                        android:layout_height="wrap_content"
+                        android:hint="Break"
+                        android:inputType="number"
+                        android:text="5"
+                        android:textAlignment="center"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:boxBackgroundColor="@android:color/white"
+                    app:boxStrokeColor="#007BFF"
+                    app:hintTextColor="#007BFF"
+                    android:layout_marginBottom="16dp">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/longBreakTimeInput"
+                        android:layout_width="80dp"
+                        android:layout_height="wrap_content"
+                        android:hint="Long Break"
+                        android:inputType="number"
+                        android:text="15"
+                        android:textAlignment="center"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    app:boxBackgroundColor="@android:color/white"
+                    app:boxStrokeColor="#007BFF"
+                    app:hintTextColor="#007BFF"
+                    android:layout_marginBottom="16dp">
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/cyclesInput"
+                        android:layout_width="80dp"
+                        android:layout_height="wrap_content"
+                        android:hint="Cycles"
+                        android:inputType="number"
+                        android:text="4"
+                        android:textAlignment="center"/>
+                </com.google.android.material.textfield.TextInputLayout>
+
+            </LinearLayout>
+        </androidx.cardview.widget.CardView>
+
+        <Button
+            android:id="@+id/applyTimeButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Apply Times"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#007BFF"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/timeInputCard"/>
+
+        <Button
+            android:id="@+id/resetButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Reset Timer"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#FF4081"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/applyTimeButton"/>
+
+        <Button
+            android:id="@+id/stopAlarmButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Stop Alarm"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#FF5722"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/resetButton"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</android.widget.ScrollView>
