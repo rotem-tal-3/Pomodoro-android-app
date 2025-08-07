@@ -2,6 +2,7 @@ package com.dishtech.pomodoroautoalarm
 
 import android.app.Activity
 import android.content.Intent
+import android.media.AudioAttributes
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
@@ -60,7 +61,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val data: Intent? = result.data
-            onReingtoneSelected(data);
+            onRingtoneSelected(data);
         }
     }
 
@@ -109,6 +110,12 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         cyclesInput.addTextChangedListener(createTextChangedWatcher { updateTimes() })
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
+
     /**
      * Creates a text watcher invoking afterChange when a text field has been changed.
      *
@@ -152,8 +159,8 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
      * @param timeLeft: Time left for the timer in milliseconds
      */
     override fun onTick(timeLeft: Long) {
-        val minutes = (timeLeft / 1000) / 60
-        val seconds = (timeLeft / 1000) % 60
+        val minutes = TimerUtils.minutesPartOfMillis(timeLeft)
+        val seconds = TimerUtils.secondsPartOfMillis(timeLeft)
         timeTextView.text = String.format("%02d:%02d", minutes, seconds)
     }
 
@@ -168,19 +175,13 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
      * Plays the alarm sound.
      */
     private fun playAlarmSound() {
-        if (selectedSoundUri != null) {
-            mediaPlayer = MediaPlayer.create(this, selectedSoundUri)
-            mediaPlayer?.start()
-            mediaPlayer?.setOnCompletionListener {
-                it.release()
-            }
-        } else {
-            val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            mediaPlayer = MediaPlayer.create(this, uri)
-            mediaPlayer?.start()
-            mediaPlayer?.setOnCompletionListener {
-                it.release()
-            }
+        val soundUri = if (selectedSoundUri != null) selectedSoundUri else RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        mediaPlayer = MediaPlayer.create(this, soundUri)
+        val attributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
+        mediaPlayer?.setAudioAttributes(attributes)
+        mediaPlayer?.start()
+        mediaPlayer?.setOnCompletionListener {
+            it.release()
         }
     }
 
@@ -211,7 +212,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     /**
      * Handles ringtone selection.
      */
-    fun onReingtoneSelected(data: Intent?) {
+    private fun onRingtoneSelected(data: Intent?) {
         val ringtoneUri: Uri = data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)!!
         selectedSoundUri = ringtoneUri
     }
