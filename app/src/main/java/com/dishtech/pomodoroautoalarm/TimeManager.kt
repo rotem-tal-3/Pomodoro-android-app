@@ -24,16 +24,21 @@ class TimerManager(private val delegate: TimerDelegate) {
     private var cycleCount = 0
 
     // Number of work-break cycles before a long break.
-    private var cyclesBeforeLongBreak: Int = 4
+    var cyclesBeforeLongBreak: Int = 4
+        private set
 
     // Work time timer in milliseconds.
-    private var workTimeInMillis: Long = 25 * 60 * 1000L
+    var workTimeInMillis: Long = 25 * 60 * 1000L
+        private set
 
     // Break time timer in milliseconds.
-    private var breakTimeInMillis: Long = 5 * 60 * 1000L
+    var breakTimeInMillis: Long = 5 * 60 * 1000L
+        private set
 
     // Long break time timer in milliseconds.
-    private var longBreakTimeInMillis: Long = 15 * 60 * 1000L
+    var longBreakTimeInMillis: Long = 15 * 60 * 1000L
+        private set
+
 
     // A boolean indicating whatever the timer is running or not.
     private var isTimerRunning = false
@@ -117,18 +122,10 @@ class TimerManager(private val delegate: TimerDelegate) {
      * @param breakTime: The time dedicated for breaks.
      * @param longBreakTime: The time dedicated for long breaks.
      */
-    fun updateTimes(workTime: Int, breakTime: Int, longBreakTime: Int) {
+    fun updateTimes(workTime: Int, breakTime: Int, longBreakTime: Int, cycles: Int) {
         workTimeInMillis = workTime * 60 * 1000L
         breakTimeInMillis = breakTime * 60 * 1000L
         longBreakTimeInMillis = longBreakTime * 60 * 1000L
-    }
-
-    /**
-     * Sets the number of work-break cycles before long breaks.
-     *
-     * @param cycles: The number of cycles.
-     */
-    fun setCyclesBeforeLongBreak(cycles: Int) {
         cyclesBeforeLongBreak = cycles
     }
 
