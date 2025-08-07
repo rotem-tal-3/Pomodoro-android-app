@@ -64,14 +64,29 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val data: Intent? = result.data
-            onRingtoneSelected(data);
+            onAlarmSelected(data);
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        loadViews()
+        loadAlarm()
+        setupTimes()
+        setupListeners()
+    }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        mediaPlayer?.release()
+        mediaPlayer = null
+    }
+
+    /**
+     * Loads the views controlled by this activity into their respective propertiees.
+     */
+    private fun loadViews() {
         persistentStorageManager = PersistentStorageManager(this)
         timeTextView = findViewById(R.id.timeTextView)
         startStopButton = findViewById(R.id.startStopButton)
@@ -82,7 +97,13 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         longBreakTimeInput = findViewById(R.id.longBreakTimeInput)
         cyclesInput = findViewById(R.id.cyclesInput)
         resetButton = findViewById(R.id.resetButton)
+    }
 
+    /**
+     * Sets up the times loaded from the persistent storage into the timer manager and their
+     * respective views.
+     */
+    private fun setupTimes() {
         val workTime = persistentStorageManager.getWorkTime()
         val breakTime = persistentStorageManager.getBreakTime()
         val longBreakTime = persistentStorageManager.getLongBreakTime()
@@ -95,7 +116,12 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         breakTimeInput.setText(breakTime.toString())
         longBreakTimeInput.setText(longBreakTime.toString())
         cyclesInput.setText(cycles.toString())
+    }
 
+    /**
+     * Sets up the user action listeners.
+     */
+    private fun setupListeners() {
         startStopButton.setOnClickListener {
             if (timerManager.isTimerRunning) {
                 timerManager.stopTimer()
@@ -107,7 +133,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         }
 
         chooseSoundButton.setOnClickListener {
-            openRingtonePicker()
+            openAlarmPicker()
         }
 
         stopAlarmButton.setOnClickListener {
@@ -126,13 +152,6 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         cyclesInput.addTextChangedListener(createTextChangedWatcher { updateTimes() })
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        mediaPlayer?.release()
-        mediaPlayer = null
-    }
-
-
     /**
      * Creates a text watcher invoking afterChange when a text field has been changed.
      *
@@ -145,6 +164,39 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
             }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        }
+    }
+
+    /**
+     * Loads the alarm URI from the persistent storage.
+     */
+    private fun loadAlarm() {
+        val savedAlarmUri = persistentStorageManager.getAlarmUri()
+        if (savedAlarmUri.isNotEmpty()) {
+            val uri = Uri.parse(savedAlarmUri)
+            if (isValidSoundUri(uri)) {
+                Toast.makeText(this, "is valid", Toast.LENGTH_SHORT).show()
+                selectedSoundUri = uri
+            }
+
+        }
+    }
+
+    /**
+     * Returns true if the given URI points to a valid sound resource, false otherwise.
+     *
+     * @param uri: Uri to be checked.
+     */
+    private fun isValidSoundUri(uri: Uri?): Boolean {
+        return try {
+            val mediaPlayer = MediaPlayer.create(this, uri)
+            mediaPlayer?.let {
+                it.release()
+                true
+            } ?: false
+        } catch (e: Exception) {
+            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
+            false
         }
     }
 
@@ -222,9 +274,10 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     }
 
     /**
-     * Opens the ringtone picker.
+     * Opens the alarm picker.
      */
-    private fun openRingtonePicker() {
+    private fun openAlarmPicker() {
+        stopAlarm()
         val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER)
         intent.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
         intent.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
@@ -233,10 +286,11 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     }
 
     /**
-     * Handles ringtone selection.
+     * Handles alarm selection.
      */
-    private fun onRingtoneSelected(data: Intent?) {
-        val ringtoneUri: Uri = data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)!!
-        selectedSoundUri = ringtoneUri
+    private fun onAlarmSelected(data: Intent?) {
+        val alarmUri: Uri = data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)!!
+        selectedSoundUri = alarmUri
+        persistentStorageManager.saveAlarmUri(alarmUri.toString())
     }
 }
