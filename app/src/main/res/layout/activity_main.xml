@@ -142,17 +142,6 @@
         </androidx.cardview.widget.CardView>
 
         <Button
-            android:id="@+id/applyTimeButton"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:text="Apply Times"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#007BFF"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/timeInputCard"/>
-
-        <Button
             android:id="@+id/resetButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -161,7 +150,7 @@
             android:backgroundTint="#FF4081"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/applyTimeButton"/>
+            app:layout_constraintTop_toBottomOf="@id/timeInputCard"/>
 
         <Button
             android:id="@+id/stopAlarmButton"

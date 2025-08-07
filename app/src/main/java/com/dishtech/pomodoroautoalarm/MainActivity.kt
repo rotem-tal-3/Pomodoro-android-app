@@ -33,6 +33,9 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     // A button used to stop the alarm sound.
     private lateinit var stopAlarmButton: Button
 
+    // A button used to reset the cycle.
+    private lateinit var resetButton: Button
+
     // Text input used to get the desired work time from the user.
     private lateinit var workTimeInput: EditText
 
@@ -73,15 +76,16 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         breakTimeInput = findViewById(R.id.breakTimeInput)
         longBreakTimeInput = findViewById(R.id.longBreakTimeInput)
         cyclesInput = findViewById(R.id.cyclesInput)
+        resetButton = findViewById(R.id.resetButton)
         timerManager = TimerManager(this)
 
         startStopButton.setOnClickListener {
-            if (timerManager.isTimerRunning()) {
+            if (timerManager.isTimerRunning) {
                 timerManager.stopTimer()
                 startStopButton.text = "Start"
             } else {
                 timerManager.runCycles()
-                startStopButton.text = "Stop"
+                startStopButton.text = "Pause"
             }
         }
 
@@ -91,6 +95,12 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
 
         stopAlarmButton.setOnClickListener {
             stopAlarm()
+        }
+
+        resetButton.setOnClickListener {
+            timerManager.resetTimer()
+            onTick(timerManager.workTimeInMillis)
+            startStopButton.text = "Start"
         }
 
         workTimeInput.addTextChangedListener(createTextChangedWatcher { updateTimes() })
