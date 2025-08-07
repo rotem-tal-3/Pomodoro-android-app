@@ -26,7 +26,7 @@ object TimerUtils {
     /**
      * Converts the given minutes to milliseconds.
      *
-     * @param minutes:
+     * @param minutes: Minutes to be converted.
      */
     fun minutesToMillis(minutes: Int): Long {
         return minutes * 60 * 1000L

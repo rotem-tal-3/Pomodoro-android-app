@@ -57,6 +57,10 @@ class TimerManager(private val delegate: TimerDelegate) {
      * Starts the Pomodoro cycle.
      */
     fun runCycles() {
+        if (isRunningCycle) {
+            resumeTimer()
+            return
+        }
         isRunningCycle = true
         cycleCount = 0
         isWork = true
@@ -80,6 +84,7 @@ class TimerManager(private val delegate: TimerDelegate) {
             override fun onFinish() {
                 delegate.onTimerFinished()
                 if (!isWork) {
+                    isWork = true
                     startTimer(workTimeInMillis)
                 } else if (cycleCount < cyclesBeforeLongBreak) {
                     startBreakCycle()
