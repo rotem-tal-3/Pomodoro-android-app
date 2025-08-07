@@ -6,8 +6,11 @@ import android.os.CountDownTimer
  * and long breaks timers.
  *
  * @param delegate: A delegate to be updated on ticks and finished timers.
+ * @param _workTimeInMillis:
  */
-class TimerManager(private val delegate: TimerDelegate) {
+class TimerManager(private val delegate: TimerDelegate, private var _workTimeInMillis: Long,
+                   private var _breakTimeInMillis: Long, private var _longBreakTimeInMillis: Long,
+                   private var _cyclesBeforeLongBreak: Int) {
 
     /**
      *  An interface implemented by delegates of the timer manager.
@@ -24,20 +27,16 @@ class TimerManager(private val delegate: TimerDelegate) {
     private var cycleCount = 0
 
     // Number of work-break cycles before a long break.
-    var cyclesBeforeLongBreak: Int = 4
-        private set
+    val cyclesBeforeLongBreak: Int get() = _cyclesBeforeLongBreak
 
-    // Work time timer in milliseconds.
-    var workTimeInMillis: Long = TimerUtils.minutesToMillis(25)
-        private set
+    // Work time in milliseconds.
+    val workTimeInMillis: Long get() = _workTimeInMillis
 
-    // Break time timer in milliseconds.
-    var breakTimeInMillis: Long = TimerUtils.minutesToMillis(5)
-        private set
+    // Break time in milliseconds.
+    val breakTimeInMillis: Long get() = _breakTimeInMillis
 
-    // Long break time timer in milliseconds.
-    var longBreakTimeInMillis: Long = TimerUtils.minutesToMillis(15)
-        private set
+    // Long break time in milliseconds.
+    val longBreakTimeInMillis: Long get() = _longBreakTimeInMillis
 
     // A boolean indicating whatever the timer is running or not.
     var isTimerRunning = false
@@ -135,10 +134,10 @@ class TimerManager(private val delegate: TimerDelegate) {
      * @param longBreakTime: The time dedicated for long breaks.
      */
     fun updateTimes(workTime: Int, breakTime: Int, longBreakTime: Int, cycles: Int) {
-        workTimeInMillis = TimerUtils.minutesToMillis(workTime)
-        breakTimeInMillis = TimerUtils.minutesToMillis(breakTime)
-        longBreakTimeInMillis = TimerUtils.minutesToMillis(longBreakTime)
-        cyclesBeforeLongBreak = cycles
+        _workTimeInMillis = TimerUtils.minutesToMillis(workTime)
+        _breakTimeInMillis = TimerUtils.minutesToMillis(breakTime)
+        _longBreakTimeInMillis = TimerUtils.minutesToMillis(longBreakTime)
+        _cyclesBeforeLongBreak = cycles
     }
 
     /**
@@ -152,7 +151,7 @@ class TimerManager(private val delegate: TimerDelegate) {
     /**
      * Resumes the timer from the time it last stopped.
      */
-    fun resumeTimer() {
+    private fun resumeTimer() {
         startTimer(timeLeft)
     }
 

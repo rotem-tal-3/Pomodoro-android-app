@@ -49,6 +49,9 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     // Text input used to get the desired number of work- break time from the user.
     private lateinit var cyclesInput: EditText
 
+    // Persistent storage manager used to retrieve user preferences.
+    private lateinit var persistentStorageManager: PersistentStorageManager
+
     // A variable used to store the sound selected by the user.
     private var selectedSoundUri: Uri? = null
 
@@ -69,6 +72,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        persistentStorageManager = PersistentStorageManager(this)
         timeTextView = findViewById(R.id.timeTextView)
         startStopButton = findViewById(R.id.startStopButton)
         chooseSoundButton = findViewById(R.id.chooseSoundButton)
@@ -78,7 +82,19 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         longBreakTimeInput = findViewById(R.id.longBreakTimeInput)
         cyclesInput = findViewById(R.id.cyclesInput)
         resetButton = findViewById(R.id.resetButton)
-        timerManager = TimerManager(this)
+
+        val workTime = persistentStorageManager.getWorkTime()
+        val breakTime = persistentStorageManager.getBreakTime()
+        val longBreakTime = persistentStorageManager.getLongBreakTime()
+        val cycles = persistentStorageManager.getCycles()
+        timerManager = TimerManager(this, TimerUtils.minutesToMillis(workTime),
+                                    TimerUtils.minutesToMillis(breakTime),
+                                    TimerUtils.minutesToMillis(longBreakTime), cycles)
+        setTimeTextViewToTime(timerManager.workTimeInMillis)
+        workTimeInput.setText(workTime.toString())
+        breakTimeInput.setText(breakTime.toString())
+        longBreakTimeInput.setText(longBreakTime.toString())
+        cyclesInput.setText(cycles.toString())
 
         startStopButton.setOnClickListener {
             if (timerManager.isTimerRunning) {
@@ -100,7 +116,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
 
         resetButton.setOnClickListener {
             timerManager.resetTimer()
-            onTick(timerManager.workTimeInMillis)
+            setTimeTextViewToTime(timerManager.workTimeInMillis)
             startStopButton.text = "Start"
         }
 
@@ -115,6 +131,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         mediaPlayer?.release()
         mediaPlayer = null
     }
+
 
     /**
      * Creates a text watcher invoking afterChange when a text field has been changed.
@@ -143,8 +160,10 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
             val cycles = cyclesInput.text.toString().toIntOrNull() ?: timerManager.cyclesBeforeLongBreak
             timerManager.updateTimes(workMinutes, breakMinutes, longBreakMinutes, cycles)
             if (!timerManager.isRunningCycle) {
-                onTick(timerManager.workTimeInMillis)
+                setTimeTextViewToTime(timerManager.workTimeInMillis)
             }
+            persistentStorageManager.saveTimes(workMinutes, breakMinutes, longBreakMinutes,
+                                               cycles)
         } catch (e: NumberFormatException) {
             workTimeInput.setText(TimerUtils.minutesPartOfMillis(timerManager.workTimeInMillis).toString())
             breakTimeInput.setText(TimerUtils.minutesPartOfMillis(timerManager.breakTimeInMillis).toString())
@@ -153,15 +172,19 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         }
     }
 
+    private fun setTimeTextViewToTime(time: Long) {
+        val minutes = TimerUtils.minutesPartOfMillis(time)
+        val seconds = TimerUtils.secondsPartOfMillis(time)
+        timeTextView.text = String.format("%02d:%02d", minutes, seconds)
+    }
+
     /**
      * Updates the timer view on tick.
      *
      * @param timeLeft: Time left for the timer in milliseconds
      */
     override fun onTick(timeLeft: Long) {
-        val minutes = TimerUtils.minutesPartOfMillis(timeLeft)
-        val seconds = TimerUtils.secondsPartOfMillis(timeLeft)
-        timeTextView.text = String.format("%02d:%02d", minutes, seconds)
+        setTimeTextViewToTime(timeLeft)
     }
 
     /**
@@ -216,6 +239,4 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         val ringtoneUri: Uri = data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)!!
         selectedSoundUri = ringtoneUri
     }
-
-
 }
