@@ -23,6 +23,9 @@ class PersistentStorageManager(context: Context) {
     // Key for the number of cycles.
     private val CYCLES_KEY = "cycles"
 
+    // Key for the alarm sound.
+    private val ALARM_KEY = "alarm_sound"
+
     // Default work time in minutes.
     private val DEFAULT_WORK_TIME = 25
 
@@ -34,6 +37,9 @@ class PersistentStorageManager(context: Context) {
 
     // Default number of cycles.
     private val DEFAULT_CYCLES = 4
+
+    // Default alarm sound URI.
+    private val DEFAULT_ALARM_URI = ""
 
     /**
      * Saves the given times to the persistent storage.
@@ -53,30 +59,50 @@ class PersistentStorageManager(context: Context) {
     }
 
     /**
-     * Returns the saved work time from the persistent storage.
+     * Saves the alarm Uri to the persistent storage.
+     *
+     * @param uri: String representing the URI of the selected alarm.
+     */
+    fun saveAlarmUri(uri: String) {
+        val editor = sharedPreferences.edit()
+        editor.putString(ALARM_KEY, uri)
+        editor.apply()
+    }
+
+    /**
+     * Returns the saved work time from the persistent storage, or the default if none is saved.
      */
     fun getWorkTime(): Int {
         return sharedPreferences.getInt(WORK_TIME_KEY, DEFAULT_WORK_TIME)
     }
 
     /**
-     * Returns the saved break time from the persistent storage.
+     * Returns the saved break time from the persistent storage, or the default if none is saved.
      */
     fun getBreakTime(): Int {
         return sharedPreferences.getInt(BREAK_TIME_KEY, DEFAULT_BREAK_TIME)
     }
 
     /**
-     * Returns the saved long break time from the persistent storage.
+     * Returns the saved long break time from the persistent storage, or the default if none is
+     * saved.
      */
     fun getLongBreakTime(): Int {
         return sharedPreferences.getInt(LONG_BREAK_TIME_KEY, DEFAULT_LONG_BREAK_TIME)
     }
 
     /**
-     * Returns the saved number of cycles from the persistent storage.
+     * Returns the saved number of cycles from the persistent storage, or the default if none is
+     * saved.
      */
     fun getCycles(): Int {
         return sharedPreferences.getInt(CYCLES_KEY, DEFAULT_CYCLES)
+    }
+
+    /**
+     * Returns the saved alarm URI from the persistent storage, or the default if none is saved.
+     */
+    fun getAlarmUri(): String {
+        return sharedPreferences.getString(ALARM_KEY, DEFAULT_ALARM_URI) ?: DEFAULT_ALARM_URI
     }
 }
