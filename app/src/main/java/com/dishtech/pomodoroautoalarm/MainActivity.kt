@@ -6,12 +6,14 @@ import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
 /**
- * This class acts as a controller, feeding necessary data from the view to the TimerManager,
+ * This class acts as a view model, feeding necessary data from the view to the TimerManager,
  * and receiving data using the TimerDelegate interface.
  */
 class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
@@ -27,9 +29,6 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
 
     // A button used to open the ringtone manager and to choose a sound.
     private lateinit var chooseSoundButton: Button
-
-    // A button used to set the new times set by the user.
-    private lateinit var applyTimeButton: Button
 
     // A button used to stop the alarm sound.
     private lateinit var stopAlarmButton: Button
@@ -49,7 +48,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     // A variable used to store the sound selected by the user.
     private var selectedSoundUri: Uri? = null
 
-    // Media player for playing and stoping the alarm.
+    // Media player for playing and stopping the alarm.
     private var mediaPlayer: MediaPlayer? = null
 
     // Launcher used to launch the ringtone select activity.
@@ -69,7 +68,6 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         timeTextView = findViewById(R.id.timeTextView)
         startStopButton = findViewById(R.id.startStopButton)
         chooseSoundButton = findViewById(R.id.chooseSoundButton)
-        applyTimeButton = findViewById(R.id.applyTimeButton)
         stopAlarmButton = findViewById(R.id.stopAlarmButton)
         workTimeInput = findViewById(R.id.workTimeInput)
         breakTimeInput = findViewById(R.id.breakTimeInput)
@@ -91,13 +89,50 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
             openRingtonePicker()
         }
 
-        applyTimeButton.setOnClickListener {
-            applyCustomTimes()
-        }
-
-
         stopAlarmButton.setOnClickListener {
             stopAlarm()
+        }
+
+        workTimeInput.addTextChangedListener(createTextChangedWatcher { updateTimes() })
+        breakTimeInput.addTextChangedListener(createTextChangedWatcher { updateTimes() })
+        longBreakTimeInput.addTextChangedListener(createTextChangedWatcher { updateTimes() })
+        cyclesInput.addTextChangedListener(createTextChangedWatcher { updateTimes() })
+    }
+
+    /**
+     * Creates a text watcher invoking afterChange when a text field has been changed.
+     *
+     * @param afterChange: A function to be invoked after the change.
+     */
+    private fun createTextChangedWatcher(afterChange: () -> Unit): TextWatcher {
+        return object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                afterChange()
+            }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        }
+    }
+
+    /**
+     * Updates the timerManager times according to the current input in the text fields. On
+     * NumberFormatException reverts the text display to the current times set in the timerManager.
+     */
+    private fun updateTimes() {
+        try {
+            val workMinutes = workTimeInput.text.toString().toIntOrNull() ?: TimerUtils.minutesPartOfMillis(timerManager.workTimeInMillis)
+            val breakMinutes = breakTimeInput.text.toString().toIntOrNull() ?: TimerUtils.minutesPartOfMillis(timerManager.breakTimeInMillis)
+            val longBreakMinutes = longBreakTimeInput.text.toString().toIntOrNull() ?: TimerUtils.minutesPartOfMillis(timerManager.longBreakTimeInMillis)
+            val cycles = cyclesInput.text.toString().toIntOrNull() ?: timerManager.cyclesBeforeLongBreak
+            timerManager.updateTimes(workMinutes, breakMinutes, longBreakMinutes, cycles)
+            if (!timerManager.isRunningCycle) {
+                onTick(timerManager.workTimeInMillis)
+            }
+        } catch (e: NumberFormatException) {
+            workTimeInput.setText(TimerUtils.minutesPartOfMillis(timerManager.workTimeInMillis).toString())
+            breakTimeInput.setText(TimerUtils.minutesPartOfMillis(timerManager.breakTimeInMillis).toString())
+            longBreakTimeInput.setText(TimerUtils.minutesPartOfMillis(timerManager.longBreakTimeInMillis))
+            cyclesInput.setText(timerManager.cyclesBeforeLongBreak)
         }
     }
 
@@ -171,20 +206,5 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         selectedSoundUri = ringtoneUri
     }
 
-    /**
-     * Applies the times set by the users.
-     */
-    private fun applyCustomTimes() {
-        try {
-            val workMinutes = workTimeInput.text.toString().toInt()
-            val breakMinutes = breakTimeInput.text.toString().toInt()
-            val longBreakMinutes = longBreakTimeInput.text.toString().toInt()
-            val cycles = cyclesInput.text.toString().toInt()
 
-            timerManager.updateTimes(workMinutes, breakMinutes, longBreakMinutes)
-            timerManager.setCyclesBeforeLongBreak(cycles)
-        } catch (e: NumberFormatException) {
-            Toast.makeText(this, "Please enter valid numbers", Toast.LENGTH_SHORT).show()
-        }
-    }
 }
