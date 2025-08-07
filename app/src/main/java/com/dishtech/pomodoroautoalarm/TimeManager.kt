@@ -28,20 +28,20 @@ class TimerManager(private val delegate: TimerDelegate) {
         private set
 
     // Work time timer in milliseconds.
-    var workTimeInMillis: Long = 25 * 60 * 1000L
+    var workTimeInMillis: Long = TimerUtils.minutesToMillis(25)
         private set
 
     // Break time timer in milliseconds.
-    var breakTimeInMillis: Long = 5 * 60 * 1000L
+    var breakTimeInMillis: Long = TimerUtils.minutesToMillis(5)
         private set
 
     // Long break time timer in milliseconds.
-    var longBreakTimeInMillis: Long = 15 * 60 * 1000L
+    var longBreakTimeInMillis: Long = TimerUtils.minutesToMillis(15)
         private set
 
-
     // A boolean indicating whatever the timer is running or not.
-    private var isTimerRunning = false
+    var isTimerRunning = false
+        private set
 
     // Indicates the remaining time on the timer.
     private var timeLeft: Long = 0L
@@ -49,10 +49,15 @@ class TimerManager(private val delegate: TimerDelegate) {
     // Indicates whatever the timer is currently counting work or a break.
     private var isWork: Boolean = false
 
+    // Indicates whatever the timer is currently running a cycle.
+    var isRunningCycle = false
+        private set
+
     /**
      * Starts the Pomodoro cycle.
      */
     fun runCycles() {
+        isRunningCycle = true
         cycleCount = 0
         isWork = true
         startTimer(workTimeInMillis)
@@ -73,6 +78,7 @@ class TimerManager(private val delegate: TimerDelegate) {
             }
 
             override fun onFinish() {
+                delegate.onTimerFinished()
                 if (!isWork) {
                     startTimer(workTimeInMillis)
                 } else if (cycleCount < cyclesBeforeLongBreak) {
@@ -110,6 +116,7 @@ class TimerManager(private val delegate: TimerDelegate) {
     fun resetTimer() {
         countDownTimer?.cancel()
         cycleCount = 0
+        isRunningCycle = false
         delegate.onTick(workTimeInMillis)
         isTimerRunning = false
         isWork = false
@@ -123,9 +130,9 @@ class TimerManager(private val delegate: TimerDelegate) {
      * @param longBreakTime: The time dedicated for long breaks.
      */
     fun updateTimes(workTime: Int, breakTime: Int, longBreakTime: Int, cycles: Int) {
-        workTimeInMillis = workTime * 60 * 1000L
-        breakTimeInMillis = breakTime * 60 * 1000L
-        longBreakTimeInMillis = longBreakTime * 60 * 1000L
+        workTimeInMillis = TimerUtils.minutesToMillis(workTime)
+        breakTimeInMillis = TimerUtils.minutesToMillis(breakTime)
+        longBreakTimeInMillis = TimerUtils.minutesToMillis(longBreakTime)
         cyclesBeforeLongBreak = cycles
     }
 
@@ -144,10 +151,4 @@ class TimerManager(private val delegate: TimerDelegate) {
         startTimer(timeLeft)
     }
 
-    /**
-     * Returns a boolean indicating whatever the timer is running or not.
-     */
-    fun isTimerRunning(): Boolean {
-        return isTimerRunning
-    }
 }
