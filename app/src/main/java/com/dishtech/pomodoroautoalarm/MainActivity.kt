@@ -1,6 +1,8 @@
 package com.dishtech.pomodoroautoalarm
 
 import android.app.Activity
+import android.app.AlertDialog
+import android.content.DialogInterface
 import android.content.Intent
 import android.media.AudioAttributes
 import android.media.MediaPlayer
@@ -10,8 +12,11 @@ import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.widget.*
+import android.provider.Settings
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.net.toUri
 
 /**
  * This class acts as a view model, feeding necessary data from the view to the TimerManager,
@@ -75,6 +80,9 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         loadAlarm()
         setupTimes()
         setupListeners()
+        if (!isNotificationsEnabled()) {
+            showEnableNotificationDialog()
+        }
     }
 
     override fun onDestroy() {
@@ -84,7 +92,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     }
 
     /**
-     * Loads the views controlled by this activity into their respective propertiees.
+     * Loads the views controlled by this activity into their respective properties.
      */
     private fun loadViews() {
         persistentStorageManager = PersistentStorageManager(this)
@@ -153,6 +161,31 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     }
 
     /**
+     * Shows a dialog asking the user to enable notifications.
+     */
+    fun showEnableNotificationDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Enable Notifications")
+            .setMessage("Notifications are turned off for this app. Would you like to enable them?")
+            .setPositiveButton("Go to Settings") { _, _ ->
+                // Open the app's notification settings
+                val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                startActivity(intent)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    /**
+     * Returns true if notifications are enabled, false otherwise.
+     */
+    fun isNotificationsEnabled(): Boolean {
+        val notificationManager = NotificationManagerCompat.from(this)
+        return notificationManager.areNotificationsEnabled()
+    }
+
+    /**
      * Creates a text watcher invoking afterChange when a text field has been changed.
      *
      * @param afterChange: A function to be invoked after the change.
@@ -173,12 +206,10 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     private fun loadAlarm() {
         val savedAlarmUri = persistentStorageManager.getAlarmUri()
         if (savedAlarmUri.isNotEmpty()) {
-            val uri = Uri.parse(savedAlarmUri)
+            val uri = savedAlarmUri.toUri()
             if (isValidSoundUri(uri)) {
-                Toast.makeText(this, "is valid", Toast.LENGTH_SHORT).show()
                 selectedSoundUri = uri
             }
-
         }
     }
 
@@ -195,7 +226,6 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
                 true
             } ?: false
         } catch (e: Exception) {
-            Toast.makeText(this, e.message, Toast.LENGTH_SHORT).show()
             false
         }
     }
@@ -242,15 +272,24 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     /**
      * A function used to inform this class that the timer has finished.
      */
-    override fun onTimerFinished() {
-        playAlarmSound()
+    override fun onTimerFinished(isWork: Boolean) {
+        val app = applicationContext as App
+        if (app.appLifecycleObserver.isAppInForeground()) {
+            playAlarmSound()
+            return
+        }
+        val serviceIntent = Intent(this, AlarmService::class.java)
+        serviceIntent.putExtra("ALARM_URI", selectedSoundUri.toString())
+        serviceIntent.putExtra("IS_WORK", isWork)
+        startService(serviceIntent)
     }
 
     /**
      * Plays the alarm sound.
      */
     private fun playAlarmSound() {
-        val soundUri = if (selectedSoundUri != null) selectedSoundUri else RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+        val soundUri = if (selectedSoundUri != null) selectedSoundUri else
+            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         mediaPlayer = MediaPlayer.create(this, soundUri)
         val attributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
         mediaPlayer?.setAudioAttributes(attributes)
@@ -261,9 +300,10 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     }
 
     /**
-     *  Stops the currently playing alarm sound
+     *  Stops the currently playing alarm sound.
      */
     private fun stopAlarm() {
+        sendStopAlarmBroadcast()
         mediaPlayer?.let {
             if (it.isPlaying) {
                 it.stop()
@@ -271,6 +311,14 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
                 mediaPlayer = null
             }
         }
+    }
+
+    /**
+     * Sends a broadcast to stop the alarm.
+     */
+    private fun sendStopAlarmBroadcast() {
+        val stopIntent = Intent(this, StopAlarmReceiver::class.java)
+        this.sendBroadcast(stopIntent)
     }
 
     /**

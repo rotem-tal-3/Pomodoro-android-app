@@ -6,7 +6,10 @@ import android.os.CountDownTimer
  * and long breaks timers.
  *
  * @param delegate: A delegate to be updated on ticks and finished timers.
- * @param _workTimeInMillis:
+ * @param _workTimeInMillis: Work time in milliseconds.
+ * @param _breakTimeInMillis: Break time in milliseconds.
+ * @param _longBreakTimeInMillis: Long break time in milliseconds.
+ * @param _cyclesBeforeLongBreak: Number of work-break cycles before the long break.
  */
 class TimerManager(private val delegate: TimerDelegate, private var _workTimeInMillis: Long,
                    private var _breakTimeInMillis: Long, private var _longBreakTimeInMillis: Long,
@@ -17,7 +20,7 @@ class TimerManager(private val delegate: TimerDelegate, private var _workTimeInM
      */
     interface TimerDelegate {
         fun onTick(timeLeft: Long)
-        fun onTimerFinished()
+        fun onTimerFinished(isWork: Boolean)
     }
 
     // A timer for internal use.
@@ -81,7 +84,7 @@ class TimerManager(private val delegate: TimerDelegate, private var _workTimeInM
             }
 
             override fun onFinish() {
-                delegate.onTimerFinished()
+                delegate.onTimerFinished(isWork)
                 if (!isWork) {
                     isWork = true
                     startTimer(workTimeInMillis)
