@@ -116,9 +116,11 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         val breakTime = persistentStorageManager.getBreakTime()
         val longBreakTime = persistentStorageManager.getLongBreakTime()
         val cycles = persistentStorageManager.getCycles()
-        timerManager = TimerManager(this, TimerUtils.minutesToMillis(workTime),
+        timerManager = TimerManager(WeakReference(this),
+                                    TimerUtils.minutesToMillis(workTime),
                                     TimerUtils.minutesToMillis(breakTime),
-                                    TimerUtils.minutesToMillis(longBreakTime), cycles)
+                                    TimerUtils.minutesToMillis(longBreakTime),
+                                    cycles)
         setTimeTextViewToTime(timerManager.workTimeInMillis)
         workTimeInput.setText(workTime.toString())
         breakTimeInput.setText(breakTime.toString())

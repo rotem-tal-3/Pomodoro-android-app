@@ -1,5 +1,6 @@
 package com.dishtech.pomodoroautoalarm
 import android.os.CountDownTimer
+import java.lang.ref.WeakReference
 
 /**
  * A class for managing the timer logic and state. Responsible for switching between the work, break
@@ -11,8 +12,10 @@ import android.os.CountDownTimer
  * @param _longBreakTimeInMillis: Long break time in milliseconds.
  * @param _cyclesBeforeLongBreak: Number of work-break cycles before the long break.
  */
-class TimerManager(private val delegate: TimerDelegate, private var _workTimeInMillis: Long,
-                   private var _breakTimeInMillis: Long, private var _longBreakTimeInMillis: Long,
+class TimerManager(private val delegate: WeakReference<TimerDelegate>,
+                   private var _workTimeInMillis: Long,
+                   private var _breakTimeInMillis: Long,
+                   private var _longBreakTimeInMillis: Long,
                    private var _cyclesBeforeLongBreak: Int) {
 
     /**
@@ -46,10 +49,12 @@ class TimerManager(private val delegate: TimerDelegate, private var _workTimeInM
         private set
 
     // Indicates the remaining time on the timer.
-    private var timeLeft: Long = 0L
+    var timeLeft: Long = 0L
+        private set
 
     // Indicates whatever the timer is currently counting work or a break.
-    private var isWork: Boolean = false
+    var isWork: Boolean = false
+        private set
 
     // Indicates whatever the timer is currently running a cycle.
     var isRunningCycle = false
@@ -63,6 +68,7 @@ class TimerManager(private val delegate: TimerDelegate, private var _workTimeInM
             resumeTimer()
             return
         }
+        timeLeft = _workTimeInMillis
         isRunningCycle = true
         cycleCount = 0
         isWork = true
@@ -75,16 +81,16 @@ class TimerManager(private val delegate: TimerDelegate, private var _workTimeInM
      * @param timeInMillis: The duration of the timer.
      */
     private fun startTimer(timeInMillis: Long) {
-
         countDownTimer?.cancel()
-        countDownTimer = object : CountDownTimer(timeInMillis, 1000) {
+        countDownTimer = object : CountDownTimer(timeInMillis,
+                                                 1000) {
             override fun onTick(millisUntilFinished: Long) {
-                delegate.onTick(millisUntilFinished)
+                delegate.get()?.onTick(millisUntilFinished)
                 timeLeft = millisUntilFinished
             }
 
             override fun onFinish() {
-                delegate.onTimerFinished(isWork)
+                delegate.get()?.onTimerFinished(isWork)
                 if (!isWork) {
                     isWork = true
                     startTimer(workTimeInMillis)
@@ -124,7 +130,7 @@ class TimerManager(private val delegate: TimerDelegate, private var _workTimeInM
         countDownTimer?.cancel()
         cycleCount = 0
         isRunningCycle = false
-        delegate.onTick(workTimeInMillis)
+        delegate.get()?.onTick(workTimeInMillis)
         isTimerRunning = false
         isWork = false
     }
