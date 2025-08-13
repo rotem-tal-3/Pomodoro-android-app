@@ -1,13 +1,12 @@
 package com.dishtech.pomodoroautoalarm
 
-import android.app.Activity
+import android.app.AlarmManager
 import android.app.AlertDialog
-import android.content.DialogInterface
+import android.app.PendingIntent
 import android.content.Intent
-import android.media.AudioAttributes
-import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -17,6 +16,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.net.toUri
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import java.lang.ref.WeakReference
 
 /**
  * This class acts as a view model, feeding necessary data from the view to the TimerManager,
@@ -57,17 +59,23 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     // Persistent storage manager used to retrieve user preferences.
     private lateinit var persistentStorageManager: PersistentStorageManager
 
-    // A variable used to store the sound selected by the user.
-    private var selectedSoundUri: Uri? = null
+    // Alarm manager used to schedule alarms.
+    private lateinit var alarmManager: AlarmManager
 
-    // Media player for playing and stopping the alarm.
-    private var mediaPlayer: MediaPlayer? = null
+    // Media player manager used for playing and stopping the alarm.
+    private lateinit var mediaPlayerManager: MediaPlayerManager
+
+    // Latest pending intent used.
+    private var latestIntent: PendingIntent? = null
+
+    // Request code used for the alarm setting.
+    private val ALARM_CODE = 1234
 
     // Launcher used to launch the ringtone select activity.
     private var resultLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult())
     { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
+        if (result.resultCode == RESULT_OK) {
             val data: Intent? = result.data
             onAlarmSelected(data);
         }
@@ -76,10 +84,12 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+        mediaPlayerManager = MediaPlayerManager(applicationContext)
         loadViews()
         loadAlarm()
         setupTimes()
         setupListeners()
+        setupAlarmManger()
         if (!isNotificationsEnabled()) {
             showEnableNotificationDialog()
         }
@@ -87,8 +97,17 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
 
     override fun onDestroy() {
         super.onDestroy()
-        mediaPlayer?.release()
-        mediaPlayer = null
+        mediaPlayerManager.onDestroy()
+    }
+
+    /**
+     * Sets up the alarm manager.
+     */
+    private fun setupAlarmManger() {
+        alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        if (!alarmManager.canScheduleExactAlarms()) {
+            showEnablePermissionDialog()
+        }
     }
 
     /**
@@ -134,11 +153,17 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     private fun setupListeners() {
         startStopButton.setOnClickListener {
             if (timerManager.isTimerRunning) {
+                cancelPendingIntent()
                 timerManager.stopTimer()
                 startStopButton.text = "Start"
             } else {
                 timerManager.runCycles()
                 startStopButton.text = "Pause"
+                if (alarmManager.canScheduleExactAlarms()) {
+                    runBlocking {
+                        setAlarm(timerManager.timeLeft, timerManager.isWork)
+                    }
+                }
             }
         }
 
@@ -154,6 +179,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
             timerManager.resetTimer()
             setTimeTextViewToTime(timerManager.workTimeInMillis)
             startStopButton.text = "Start"
+            cancelPendingIntent()
         }
 
         workTimeInput.addTextChangedListener(createTextChangedWatcher { updateTimes() })
@@ -170,13 +196,26 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
             .setTitle("Enable Notifications")
             .setMessage("Notifications are turned off for this app. Would you like to enable them?")
             .setPositiveButton("Go to Settings") { _, _ ->
-                // Open the app's notification settings
                 val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                 intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
                 startActivity(intent)
             }
             .setNegativeButton("Cancel", null)
             .show()
+    }
+
+    /**
+     * Shows a dialog asking the user to enable alarm permissions.
+     */
+    fun showEnablePermissionDialog() {
+        AlertDialog.Builder(this)
+            .setTitle("Enable Alarm Permissions")
+            .setMessage("Alarm permissions are turned off for this app. Would you like to enable them?")
+            .setPositiveButton("Go to Settings") { _, _ ->
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                intent.putExtra(Settings.EXTRA_APP_PACKAGE, packageName)
+                startActivity(intent)
+            }.setNegativeButton("Cancel", null).show()
     }
 
     /**
@@ -208,27 +247,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
     private fun loadAlarm() {
         val savedAlarmUri = persistentStorageManager.getAlarmUri()
         if (savedAlarmUri.isNotEmpty()) {
-            val uri = savedAlarmUri.toUri()
-            if (isValidSoundUri(uri)) {
-                selectedSoundUri = uri
-            }
-        }
-    }
-
-    /**
-     * Returns true if the given URI points to a valid sound resource, false otherwise.
-     *
-     * @param uri: Uri to be checked.
-     */
-    private fun isValidSoundUri(uri: Uri?): Boolean {
-        return try {
-            val mediaPlayer = MediaPlayer.create(this, uri)
-            mediaPlayer?.let {
-                it.release()
-                true
-            } ?: false
-        } catch (e: Exception) {
-            false
+            mediaPlayerManager.selectedSoundUri = savedAlarmUri.toUri()
         }
     }
 
@@ -262,6 +281,14 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
         timeTextView.text = String.format("%02d:%02d", minutes, seconds)
     }
 
+    private fun cancelPendingIntent() {
+        if (latestIntent != null) {
+            alarmManager.cancel(latestIntent!!)
+            latestIntent?.cancel()
+            latestIntent = null
+        }
+    }
+
     /**
      * Updates the timer view on tick.
      *
@@ -276,29 +303,46 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
      */
     override fun onTimerFinished(isWork: Boolean) {
         val app = applicationContext as App
-        if (app.appLifecycleObserver.isAppInForeground()) {
-            playAlarmSound()
-            return
+        val time = if (isWork) timerManager.breakTimeInMillis else timerManager.workTimeInMillis
+        runBlocking {
+            setAlarm(time, isWork)
         }
-        val serviceIntent = Intent(this, AlarmService::class.java)
-        serviceIntent.putExtra("ALARM_URI", selectedSoundUri.toString())
-        serviceIntent.putExtra("IS_WORK", isWork)
-        startService(serviceIntent)
+        if (app.appLifecycleObserver.isAppInForeground()) {
+            cancelPendingIntent()
+            playAlarmSound()
+        }
+        //startService(serviceIntent)
+    }
+
+    /**
+     * Schedules an alarm for the given time.
+     */
+    suspend fun setAlarm(timeInMillis: Long, isWork: Boolean) {
+        val serviceIntent = Intent(this.applicationContext,
+                                   AlarmReceiver::class.java).apply {
+            action = "com.dishtech.pomodoroautoalarm.ALARM_TRIGGERED_ACTION"
+            putExtra("ALARM_URI", mediaPlayerManager.selectedSoundUri?.toString() ?: "")
+            putExtra("IS_WORK", isWork)
+        }
+        val delayTime = 100L
+        val pendingIntent = PendingIntent.getBroadcast(this.applicationContext, ALARM_CODE,
+                                                serviceIntent,
+                                                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val alarmManager = getSystemService(ALARM_SERVICE) as AlarmManager
+        latestIntent = pendingIntent
+        val triggerAt = System.currentTimeMillis() + delayTime + timeInMillis
+        alarmManager.setExactAndAllowWhileIdle( AlarmManager.RTC_WAKEUP,
+                                                triggerAt,
+                                                pendingIntent)
+        delay(delayTime) // This is some black magic to ensure the alarm is set.
     }
 
     /**
      * Plays the alarm sound.
      */
     private fun playAlarmSound() {
-        val soundUri = if (selectedSoundUri != null) selectedSoundUri else
-            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-        mediaPlayer = MediaPlayer.create(this, soundUri)
-        val attributes = AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build()
-        mediaPlayer?.setAudioAttributes(attributes)
-        mediaPlayer?.start()
-        mediaPlayer?.setOnCompletionListener {
-            it.release()
-        }
+        stopAlarm()
+        mediaPlayerManager.playAlarmSound()
     }
 
     /**
@@ -306,13 +350,7 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
      */
     private fun stopAlarm() {
         sendStopAlarmBroadcast()
-        mediaPlayer?.let {
-            if (it.isPlaying) {
-                it.stop()
-                it.release()
-                mediaPlayer = null
-            }
-        }
+        mediaPlayerManager.stopAlarm()
     }
 
     /**
@@ -339,8 +377,17 @@ class MainActivity : AppCompatActivity(), TimerManager.TimerDelegate {
      * Handles alarm selection.
      */
     private fun onAlarmSelected(data: Intent?) {
-        val alarmUri: Uri = data?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)!!
-        selectedSoundUri = alarmUri
+        if (data == null) {
+            return
+        }
+        val alarmUri:Uri? = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI,
+                                    Uri::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+        }
+        mediaPlayerManager.selectedSoundUri = alarmUri
         persistentStorageManager.saveAlarmUri(alarmUri.toString())
     }
 }
