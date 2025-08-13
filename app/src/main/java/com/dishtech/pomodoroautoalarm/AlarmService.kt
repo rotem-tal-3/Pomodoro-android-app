@@ -9,6 +9,9 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
 
+/**
+ * Service used to play the alarm. Deprecated due to the use of WorkManager.
+ */
 class AlarmService : Service() {
 
     // Media player used to play alarms.
