@@ -14,8 +14,7 @@ The app also allows choosing your preferred alarm sound out of the default andro
 
 ## Screenshots
 
-![Screenshot_2025-08-07-11-07-34-416_com dishtech pomodoroautoalarm](https://github.com/user-attachments/assets/cbd3b189-136f-4d4d-af78-d2378a254b64)
-
+![pomo](https://github.com/user-attachments/assets/c090c7bd-450e-470c-9fde-1f7a60a924aa)
 
 ## Overview
 1. **Timer Settings:**
